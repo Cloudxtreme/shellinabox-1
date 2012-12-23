@@ -1185,7 +1185,12 @@ static void parseArgs(int argc, char * const argv[]) {
 }
 
 static void removeLimits() {
+#ifdef __linux__
   static int res[] = { RLIMIT_CPU, RLIMIT_DATA, RLIMIT_FSIZE, RLIMIT_NPROC };
+#else
+  static int res[] = { RLIMIT_CPU, RLIMIT_DATA, RLIMIT_FSIZE };
+#endif
+
   for (unsigned i = 0; i < sizeof(res)/sizeof(int); i++) {
     struct rlimit rl;
     getrlimit(res[i], &rl);
