@@ -220,8 +220,13 @@ static int (*x_pam_open_session)(pam_handle_t *, int);
 static int (*x_pam_set_item)(pam_handle_t *, int, const void *);
 static int (*x_pam_start)(const char *, const char *, const struct pam_conv *,
                           pam_handle_t **);
+#ifdef __sun__
+static int (*x_misc_conv)(int, struct pam_message **,
+                          struct pam_response **, void *);
+#else
 static int (*x_misc_conv)(int, const struct pam_message **,
                           struct pam_response **, void *);
+#endif
 
 #define pam_acct_mgmt         x_pam_acct_mgmt
 #define pam_authenticate      x_pam_authenticate
@@ -908,7 +913,7 @@ static int forkPty(int *pty, int useLogin, struct Utmp **utmp,
     return -1;
   } else if (pid == 0) {
     pid                     = getpid();
-    snprintf((char *)&(*utmp)->pid[0], sizeof((*utmp)->pid), "%d", pid);
+    snprintf((char *)&(*utmp)->pid[0], sizeof((*utmp)->pid), "%d", (int)pid);
 #ifdef HAVE_UTMPX_H
     (*utmp)->utmpx.ut_pid   = pid;
 #endif
@@ -938,7 +943,7 @@ static int forkPty(int *pty, int useLogin, struct Utmp **utmp,
 
     return 0;
   } else {
-    snprintf((char *)&(*utmp)->pid[0], sizeof((*utmp)->pid), "%d", pid);
+    snprintf((char *)&(*utmp)->pid[0], sizeof((*utmp)->pid), "%d", (int)pid);
 #ifdef HAVE_UTMPX_H
     (*utmp)->utmpx.ut_pid   = pid;
 #endif
@@ -1686,7 +1691,7 @@ static void launcherDaemon(int fd) {
     while (NOINTR(pid = waitpid(-1, &status, WNOHANG)) > 0) {
       if (WIFEXITED(pid) || WIFSIGNALED(pid)) {
         char key[32];
-        snprintf(&key[0], sizeof(key), "%d", pid);
+        snprintf(&key[0], sizeof(key), "%d", (int)pid);
         deleteFromHashMap(childProcesses, key);
       }
     }
@@ -1706,7 +1711,7 @@ static void launcherDaemon(int fd) {
     while (NOINTR(pid = waitpid(-1, &status, WNOHANG)) > 0) {
       if (WIFEXITED(pid) || WIFSIGNALED(pid)) {
         char key[32];
-        snprintf(&key[0], sizeof(key), "%d", pid);
+        snprintf(&key[0], sizeof(key), "%d", (int)pid);
         deleteFromHashMap(childProcesses, key);
       }
     }
