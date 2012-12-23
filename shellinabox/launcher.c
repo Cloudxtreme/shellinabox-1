@@ -1027,7 +1027,11 @@ static pam_handle_t *internalLogin(struct Service *service, struct Utmp *utmp,
   memset(&uts, 0, sizeof(uts));
   if (!hostname) {
     // Find our local hostname
+#ifdef __linux__
     check(!uname(&uts));
+#else
+    check(uname(&uts) >= 0);
+#endif
     hostname                   = uts.nodename;
   }
   const char *fqdn;
