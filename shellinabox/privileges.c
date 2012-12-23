@@ -46,6 +46,7 @@
 #define _GNU_SOURCE
 #include "config.h"
 
+#define _POSIX_PTHREAD_SEMANTICS
 #include <errno.h>
 #include <grp.h>
 #include <limits.h>
