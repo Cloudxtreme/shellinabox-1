@@ -74,6 +74,22 @@
 #include <termios.h>
 #include <unistd.h>
 
+#ifndef TTYDEF_IFLAG
+#define TTYDEF_IFLAG (BRKINT | ICRNL | IXON | IXANY)
+#endif
+#ifndef TTYDEF_OFLAG
+#define TTYDEF_OFLAG (OPOST | ONLCR)
+#endif
+#ifndef TTYDEF_LFLAG
+#define TTYDEF_LFLAG (ECHO | ICANON | ISIG | IEXTEN | ECHOE)
+#endif
+#ifndef TTYDEF_CFLAG
+#define TTYDEF_CFLAG (CREAD | CS8 | HUPCL)
+#endif
+#ifndef TTYDEF_SPEED
+#define TTYDEF_SPEED (B9600)
+#endif
+
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
 #endif
