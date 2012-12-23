@@ -49,6 +49,11 @@
 #define pthread_once    x_pthread_once
 #define execle          x_execle
 
+#ifdef __sun__
+#define _XOPEN_SOURCE 600
+#define __EXTENSIONS__
+#endif
+
 #include <dirent.h>
 #include <dlfcn.h>
 #include <fcntl.h>
