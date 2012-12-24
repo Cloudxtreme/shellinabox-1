@@ -49,6 +49,11 @@
 #define pthread_once    x_pthread_once
 #define execle          x_execle
 
+#ifdef __sun__
+#define _XOPEN_SOURCE 600
+#define __EXTENSIONS__
+#endif
+
 #include <dirent.h>
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -68,6 +73,69 @@
 #include <sys/utsname.h>
 #include <termios.h>
 #include <unistd.h>
+
+#ifndef TTYDEF_IFLAG
+#define TTYDEF_IFLAG (BRKINT | ICRNL | IXON | IXANY)
+#endif
+#ifndef TTYDEF_OFLAG
+#define TTYDEF_OFLAG (OPOST | ONLCR)
+#endif
+#ifndef TTYDEF_LFLAG
+#define TTYDEF_LFLAG (ECHO | ICANON | ISIG | IEXTEN | ECHOE)
+#endif
+#ifndef TTYDEF_CFLAG
+#define TTYDEF_CFLAG (CREAD | CS8 | HUPCL)
+#endif
+#ifndef TTYDEF_SPEED
+#define TTYDEF_SPEED (B9600)
+#endif
+
+#ifdef __sun__
+int getgrouplist(const char *uname, gid_t agroup, gid_t *groups, int *grpcnt)
+{
+  const struct group *grp;
+  int i, maxgroups, ngroups, ret;
+
+  ret = 0;
+  ngroups = 0;
+  maxgroups = *grpcnt;
+  /*
+   * When installing primary group, duplicate it;
+   * the first element of groups is the effective gid
+   * and will be overwritten when a setgid file is executed.
+   */
+  groups ? groups[ngroups++] = agroup : ngroups++;
+  if (maxgroups > 1)
+    groups ? groups[ngroups++] = agroup : ngroups++;
+  /*
+   * Scan the group file to find additional groups.
+   */
+  setgrent();
+  while ((grp = getgrent()) != NULL) {
+    if (groups) {
+      for (i = 0; i < ngroups; i++) {
+        if (grp->gr_gid == groups[i])
+          goto skip;
+      }
+    }
+    for (i = 0; grp->gr_mem[i]; i++) {
+      if (!strcmp(grp->gr_mem[i], uname)) {
+        if (ngroups >= maxgroups) {
+          ret = -1;
+          break;
+        }
+        groups ? groups[ngroups++] = grp->gr_gid : ngroups++;
+        break;
+      }
+    }
+skip:
+    ;
+  }
+  endgrent();
+  *grpcnt = ngroups;
+  return (ret);
+}
+#endif
 
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
@@ -152,8 +220,13 @@ static int (*x_pam_open_session)(pam_handle_t *, int);
 static int (*x_pam_set_item)(pam_handle_t *, int, const void *);
 static int (*x_pam_start)(const char *, const char *, const struct pam_conv *,
                           pam_handle_t **);
+#ifdef __sun__
+static int (*x_misc_conv)(int, struct pam_message **,
+                          struct pam_response **, void *);
+#else
 static int (*x_misc_conv)(int, const struct pam_message **,
                           struct pam_response **, void *);
+#endif
 
 #define pam_acct_mgmt         x_pam_acct_mgmt
 #define pam_authenticate      x_pam_authenticate
@@ -840,7 +913,7 @@ static int forkPty(int *pty, int useLogin, struct Utmp **utmp,
     return -1;
   } else if (pid == 0) {
     pid                     = getpid();
-    snprintf((char *)&(*utmp)->pid[0], sizeof((*utmp)->pid), "%d", pid);
+    snprintf((char *)&(*utmp)->pid[0], sizeof((*utmp)->pid), "%d", (int)pid);
 #ifdef HAVE_UTMPX_H
     (*utmp)->utmpx.ut_pid   = pid;
 #endif
@@ -870,7 +943,7 @@ static int forkPty(int *pty, int useLogin, struct Utmp **utmp,
 
     return 0;
   } else {
-    snprintf((char *)&(*utmp)->pid[0], sizeof((*utmp)->pid), "%d", pid);
+    snprintf((char *)&(*utmp)->pid[0], sizeof((*utmp)->pid), "%d", (int)pid);
 #ifdef HAVE_UTMPX_H
     (*utmp)->utmpx.ut_pid   = pid;
 #endif
@@ -954,7 +1027,11 @@ static pam_handle_t *internalLogin(struct Service *service, struct Utmp *utmp,
   memset(&uts, 0, sizeof(uts));
   if (!hostname) {
     // Find our local hostname
+#ifdef __linux__
     check(!uname(&uts));
+#else
+    check(uname(&uts) >= 0);
+#endif
     hostname                   = uts.nodename;
   }
   const char *fqdn;
@@ -1618,7 +1695,7 @@ static void launcherDaemon(int fd) {
     while (NOINTR(pid = waitpid(-1, &status, WNOHANG)) > 0) {
       if (WIFEXITED(pid) || WIFSIGNALED(pid)) {
         char key[32];
-        snprintf(&key[0], sizeof(key), "%d", pid);
+        snprintf(&key[0], sizeof(key), "%d", (int)pid);
         deleteFromHashMap(childProcesses, key);
       }
     }
@@ -1638,7 +1715,7 @@ static void launcherDaemon(int fd) {
     while (NOINTR(pid = waitpid(-1, &status, WNOHANG)) > 0) {
       if (WIFEXITED(pid) || WIFSIGNALED(pid)) {
         char key[32];
-        snprintf(&key[0], sizeof(key), "%d", pid);
+        snprintf(&key[0], sizeof(key), "%d", (int)pid);
         deleteFromHashMap(childProcesses, key);
       }
     }

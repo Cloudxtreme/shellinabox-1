@@ -178,6 +178,10 @@ AC_CHECK_LIB(z, deflate, [
                            Define to 1 if zlib development files are installed)
 ])])
 
+AC_SEARCH_LIBS([hstrerror], [resolv])
+AC_SEARCH_LIBS([gethostbyname], [nsl])
+AC_SEARCH_LIBS([socket], [socket])
+
 dnl Generate output files
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

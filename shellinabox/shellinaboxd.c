@@ -1185,7 +1185,12 @@ static void parseArgs(int argc, char * const argv[]) {
 }
 
 static void removeLimits() {
+#ifdef __linux__
   static int res[] = { RLIMIT_CPU, RLIMIT_DATA, RLIMIT_FSIZE, RLIMIT_NPROC };
+#else
+  static int res[] = { RLIMIT_CPU, RLIMIT_DATA, RLIMIT_FSIZE };
+#endif
+
   for (unsigned i = 0; i < sizeof(res)/sizeof(int); i++) {
     struct rlimit rl;
     getrlimit(res[i], &rl);
@@ -1275,7 +1280,7 @@ int main(int argc, char * const argv[]) {
     printf("X-ShellInABox-Port: %d\r\n"
            "X-ShellInABox-Pid: %d\r\n"
            "Content-type: text/html; charset=utf-8\r\n\r\n",
-           port, getpid());
+           port, (int)getpid());
     UNUSED(cgiRootSize);
     printfUnchecked(cgiRootStart, port, cgiSessionKey);
     fflush(stdout);
